@@ -1,17 +1,16 @@
 Python install
 ##############
 
-PyKeOps is a **Python 3 wrapper** around the low-level KeOps library, which is written in **C++/CUDA**. 
+PyKeOps is a **Python 3 wrapper** around the low-level KeOpsCore library which is written in **C++/CUDA**. 
 It provides functions that can be used in any **NumPy** or **PyTorch** script.
 
 Requirements
 ============
 
-- **Python 3** with packages **numpy** and **GPUtil**.
-- A C++ compiler compatible with std=c++14: **g++** version >=7 or **clang++** version >=8.
-- The **Cmake** build system, version >= 3.10.
-- The **Cuda** toolkit, including the **nvcc** compiler (optional): version >=10.0 is recommended. Make sure that your C++ compiler is compatible with the installed nvcc.
-- **PyTorch** (optional): version >= 1.1.0.
+- **Python 3** with the **numpy** package.
+- A C++ compiler compatible with ``std=c++11``: **g++** version >=7 or **clang++** version >=8.
+- The **Cuda** toolkit: version >=10.0 is recommended.
+- **PyTorch** (optional): version >= 1.5.
 
 
 Using pip (recommended)
@@ -19,57 +18,200 @@ Using pip (recommended)
 
 1. Just in case: in a terminal, check the **consistency** of the outputs of the commands ``which python``, ``python --version``, ``which pip`` and ``pip --version``. 
 
-2. In a terminal
+2. In a terminal, type:
 
-  .. code-block:: bash
+  .. prompt:: bash $
 
     pip install pykeops
 
-  Note that the compiled shared objects (``*.so`` files) will be stored into the folder  ``~/.cache/libkeops-$version`` where ``~`` is the path to your home folder and ``$version`` is the package version number.
+  Note that compiled shared objects (``.so`` files on Unix, ``.dylib`` on macOS) will be stored in the folder  ``~/.cache/keops/``, where ``~`` is the path to your home folder.
 
-3. Test your installation, as described in the :ref:`next section. <part.checkPython>`
+3. Test your installation, as described in the :ref:`next section <part.checkPython>`.
 
 On Google Colab
 ===============
 
-Google provides free virtual machines which are able to run KeOps
+Google provides free virtual machines where KeOps runs
 out-of-the-box. 
 In a new `Colab notebook <https://colab.research.google.com>`_, typing:
 
-.. code-block:: bash
+.. prompt:: bash $
 
-    !pip install pykeops[full] > install.log
+    !pip install pykeops > install.log
 
 should allow you to get a working version of KeOps in less than twenty seconds.
+
+
+Using Docker or Singularity
+============================
+
+We provide a reference 
+`Dockerfile <https://github.com/getkeops/keops/blob/main/Dockerfile>`_ 
+and publish full containers on our 
+`DockerHub channel <https://hub.docker.com/repository/docker/getkeops/keops-full>`_ 
+using the 
+`docker-images.sh <https://github.com/getkeops/keops/blob/main/docker-images.sh>`_ script.
+These environments contain a full installation of CUDA, NumPy, PyTorch, R, KeOps and GeomLoss.
+Their PYTHONPATH are configured to ensure that git installations of KeOps or GeomLoss 
+mounted in ``/opt/keops`` or ``/opt/geomloss`` take precedence over the 
+pre-installed Pip versions.
+
+As an example, here is the script that we use to render this website on the 
+`Jean Zay <http://www.idris.fr/eng/jean-zay/index.html>`_ scientific cluster:
+
+.. code-block:: bash
+
+  # First, clone the latest release of the KeOps repository in ~/code/keops:
+  mkdir ~/code 
+  cd ~/code 
+  git clone git@github.com:getkeops/keops.git
+
+  # Load singularity in our environment:
+  module load singularity
+
+  # Create a folder to store our Singularity files:
+  mkdir -p ~/scratch/containers
+  cd ~/scratch/containers
+
+  # Download the Docker image and store it as an immutable Singularity Image File:
+  # N.B.: Our image is pretty heavy (~6 Gb), so it is safer to create
+  #       a tmp folder on the hard drive instead of relying on the RAM-only tmpfs:
+  # N.B.: This step may take 15mn to 60mn, so you may prefer to execute it in an
+  #       interactive compute session.
+  mkdir tmp
+  SINGULARITY_TMPDIR=`pwd`/tmp singularity build keops-full.sif docker://getkeops/keops-full:latest
+  
+  # Create a separate home folder for this image. This is to ensure
+  # that we won't see any conflict between different versions of the KeOps binaries,
+  # stored in the ~/.cache folder of the virtual machine:
+  mkdir -p ~/containers/singularity_homes/keops-full
+
+  # Ask the slurm scheduler to render our documentation.
+  sbatch keops-doc.batch
+
+
+Where ``keops-doc.batch`` is an executable file that contains:
+
+.. code-block:: bash
+
+  #!/bin/bash
+
+  #SBATCH -A dvd@a100  # Use a A100 GPU - dvd@v100 is also available
+  #SBATCH -C a100 
+  #SBATCH --partition=gpu_p5
+  #SBATCH --job-name=keops_doc    # create a short name for your job
+  #SBATCH --mail-type=ALL         # Mail events (NONE, BEGIN, END, FAIL, ALL)
+  #SBATCH --mail-user=your.name@inria.fr   # Where to send mail	
+  #SBATCH --nodes=1               # node count
+  #SBATCH --ntasks=1              # total number of tasks across all nodes
+  #SBATCH --cpus-per-task=8       # cpu-cores per task (>1 if multi-threaded tasks)
+  #SBATCH --gres=gpu:1     # GPU nodes are only available in gpu partition
+  #SBATCH --time=03:00:00          # total run time limit (HH:MM:SS)
+  #SBATCH --output=logs/keops_doc.out   # output file name
+  #SBATCH --error=logs/keops_doc.err    # error file name
+
+  echo "### Running $SLURM_JOB_NAME ###"
+
+  set -x
+  cd ${SLURM_SUBMIT_DIR}
+
+  module purge
+  module load singularity
+
+  # The Jean Zay compute nodes don't have access to the internet,
+  # which means that they cannot fetch data as required by e.g. the MNIST tutorial.
+  # A workaround is to run:
+  # from sklearn.datasets import fetch_openml
+  # fetch_openml("mnist_784", cache=True, as_frame=False)
+  # on the front-end node or on your laptop, copy
+  # ~/scikit_learn_data to $WORK/data/scikit_learn_data
+  # and then rely on the --bind option as detailed below:
+
+  singularity exec \
+  -H $WORK/containers/singularity_homes/keops-full/:/home \
+  --bind ~/keops-doc.sh:/home/keops-doc.sh \
+  --bind $WORK/code:/home/code \
+  --bind $WORK/code/keops:/opt/keops \
+  --bind $WORK/data/scikit_learn_data:/home/scikit_learn_data \
+  --nv \
+  $SINGULARITY_ALLOWED_DIR/keops-full.sif \
+  /home/keops-doc.sh
+
+
+
+And ``keops-doc.sh`` is an executable file that contains:
+
+.. code-block:: bash
+
+  #!/bin/bash
+
+  echo "Rendering the KeOps documentation"
+
+  # Clean the cache folder of binaries:
+  python -c "import pykeops; pykeops.clean_pykeops()"
+
+  # First of all, make sure that all unit tests pass:
+  cd /home/code/keops
+  pytest -v
+
+  # Then, render the doc properly:
+  cd doc
+  # Remove the previous built pages:
+  make clean
+  # Render the website:
+  make html
+
+  # Re-render the doc to remove compilation messages:
+  make clean
+  make html
+
 
 
 From source using git
 =====================
 
-1. Clone the KeOps repo at a location of your choice (denoted here as ``/path/to``)
 
-  .. code-block:: console
+The simplest way of installing a specific version
+of KeOps is to use `some advanced pip syntax <https://pip.pypa.io/en/stable/reference/pip_install/#git>`_:
+
+
+.. prompt:: bash $
+
+    pip install git+https://github.com/getkeops/keops.git@main#subdirectory=keopscore
+    pip install git+https://github.com/getkeops/keops.git@main#subdirectory=pykeops
+
+
+Alternatively, you may:
+
+1. Clone the KeOps repo at a location of your choice (denoted here as ``/path/to``):
+
+  .. prompt:: bash $
 
     git clone --recursive https://github.com/getkeops/keops.git /path/to/libkeops
 
-  Note that your compiled **.so** routines will be stored in the folder ``/path/to/libkeops/pykeops/build``: this directory must have **write permission**. 
+  Note that compiled **.so** routines will be stored in the folder ``/path/to/libkeops/pykeops/build``: this directory must have **write permission**. 
 
 
-2. Manually add the directory ``/path/to/libkeops`` (and **not** ``/path/to/libkeops/pykeops/``) to your python path.
-   
-  + This can be done once and for all, by adding the path to to your ``~/.bashrc``. In a terminal,
+2. Install via pip in editable mode as follows :
+           
+    .. prompt:: bash $
+
+      pip install -e /path/to/libkeops/keopscore -e /path/to/libkeops/pykeops
+
+  + Otherwise you may add the directories ``/path/to/libkeops/keopscore`` and ``/path/to/libkeops/pykeops`` to your python path. This can be done once and for all, by adding the path to to your ``~/.bashrc``. In a terminal, type:
         
-    .. code-block:: bash
+    .. prompt:: bash $
 
-      echo "export PYTHONPATH=$PYTHONPATH:/path/to/libkeops/" >> ~/.bashrc
+      echo "export PYTHONPATH=$PYTHONPATH:/path/to/libkeops/keopscore:/path/to/libkeops/pykeops" >> ~/.bashrc
 
-  + Otherwise, you may add the following line to the beginning of your python scripts:
+  + Alternatively, you may add the following line to the beginning of your python scripts:
     
     .. code-block:: python
 
       import os.path
       import sys
-      sys.path.append('/path/to/libkeops')
+      sys.path.append('/path/to/libkeops/keopscore')
+            sys.path.append('/path/to/libkeops/pykeops')
 
 3. Test your installation, as described in the :ref:`next section. <part.checkPython>`
 
@@ -79,26 +221,19 @@ From source using git
 Testing your installation
 =========================
 
-You can use the following test functions that compile simple pykeops formulas. If the compilation fails, it returns the full log.
+You can use the following test functions to compile and run simple KeOps formulas. If the compilation fails, it returns the full log.
 
 1.  In a python terminal, 
 
   .. code-block:: python
 
     import pykeops
-    pykeops.clean_pykeops()          # just in case old build files are still present 
     pykeops.test_numpy_bindings()    # perform the compilation
         
   should return:
 
-  .. code-block:: console
+  .. code-block:: text
 
-    Compiling libKeOpsnumpyb10acd1892 in /path/to/build_dir/build-libKeOpsnumpyb10acd1892:
-       formula: Sum_Reduction(SqNorm2(x - y),1)
-       aliases: x = Vi(0,3); y = Vj(1,3); 
-       dtype  : float64
-    ... Done.
-    
     pyKeOps with numpy bindings is working!
 
 2. If you use PyTorch, the following code:
@@ -106,20 +241,17 @@ You can use the following test functions that compile simple pykeops formulas. I
   .. code-block:: python
 
     import pykeops
-    pykeops.clean_pykeops()          # just in case old build files are still present
     pykeops.test_torch_bindings()    # perform the compilation
   
   should return:
 
-  .. code-block:: console
-
-    Compiling libKeOpstorch2ee7a43993 in /path/to/build_dir/build-libKeOpstorch2ee7a43993:
-       formula: Sum_Reduction(SqNorm2(x - y),1)
-       aliases: x = Vi(0,3); y = Vj(1,3); 
-       dtype  : float32
-    ... Done.
+  .. code-block:: text
 
     pyKeOps with torch bindings is working!
+
+
+Please note that running ``pytest -v`` in a copy of our git repository will also
+let you perform an in-depth test of the entire KeOps codebase.
 
 
 Troubleshooting
@@ -128,9 +260,9 @@ Troubleshooting
 Compilation issues
 ------------------
 
-First of all, make sure that you are using a C++ compiler which is compatible with the **C++11 revision** and/or your **nvcc** (CUDA) compiler. Otherwise, compilation of formulas may fail in unexpected ways. Depending on your system, you can:
+First of all, make sure that you are using a C++ compiler which is compatible with the **C++11 revision**. Otherwise, compilation of formulas may fail in unexpected ways. Depending on your system, you can:
 
-1. Install a compiler **system-wide**: for instance, on Debian based Linux distros, this can be done by installing g++ with apt and then using `update-alternatives <https://askubuntu.com/questions/26498/choose-gcc-and-g-version>`_ to choose the right compiler.
+1. Install a compiler **system-wide**: for instance, on Debian-based Linux distributions, you can install g++ with apt and then use `update-alternatives <https://askubuntu.com/questions/26498/choose-gcc-and-g-version>`_ to choose a suitable compiler as default. Don't forget to pick compatible versions for both **gcc** and **g++**.  
 
 2. Install a compiler **locally**: if you are using a conda environment, you can install a new instance of gcc and g++ by following the `documentation of conda <https://conda.io/docs/user-guide/tasks/build-packages/compiler-tools.html>`_.
 
@@ -140,51 +272,38 @@ First of all, make sure that you are using a C++ compiler which is compatible wi
 Cache directory
 ---------------
 
-If you experience problems with compilation, it may be a good idea to **flush the build folder** (i.e. the cache of already-compiled formulas). To do this, just type:
+If you experience problems with compilation, it may be a good idea to **flush the build folder** that KeOps uses as a cache for already-compiled formulas. To do this, just type:
 
 .. code-block:: python
 
   import pykeops
   pykeops.clean_pykeops()
 
+You can change the build folder by using the ``set_build_folder()`` function:
 
+.. code-block:: python
+
+  import pykeops
+  print(pykeops.get_build_folder())  # display current build_folder
+  pykeops.set_build_folder("/my/new/location")  # change the build folder
+  print(pykeops.get_build_folder())  # display new build_folder
+
+Note that the command ``set_build_folder()`` without any argument will reset the location to the default one (``~/.keops/build`` on unix-like systems)
 
 Verbosity level
 ---------------
 
-To help debugging, you can activate a **verbose** compilation mode. It may be done by defining the environment variable `PYKEOPS_VERBOSE` to 1. In a terminal
+You can deactivate all messages and warnings by setting the environment variable `PYKEOPS_VERBOSE` to 0. In a terminal, type:
 
-.. code-block:: bash
+.. prompt:: bash $
 
-  export PYKEOPS_VERBOSE=1
+  export PYKEOPS_VERBOSE=0
   python my_script_calling_pykeops.py
 
-Or directly in your python script by setting **after** your KeOps imports the flag pykeops.verbose to true. It gives in a python shell something like: 
+Alternatively, you can disable verbose compilation from your python script using the function ``pykeops.set_verbose``. In a python shell, type:
 
 .. code-block:: python
 
   import pykeops
-  pykeops.verbose = True
+  pykeops.set_verbose(False)
 
-
-Build type
-----------
-
-You can force the (re)compilation of the KeOps shared objects by changing the build type from ``Release`` (default) to ``Debug``. This may be done by defining the environment variable ``PYKEOPS_BUILD_TYPE`` , either in a terminal:
-
-.. code-block:: bash
-
-  export PYKEOPS_BUILD_TYPE="Debug"
-  python my_script_calling_pykeops.py
-
-Or directly in your python script, altering the value of the (string) variable ``pykeops.build_type`` right **after** your KeOps imports. In a python shell, simply type: 
-
-.. code-block:: python
-
-  import pykeops
-  pykeops.build_type = 'Debug'
-
-.. warning::
-  Beware! The shared objects generated in debug mode are **not optimized**,
-  and should thus be deleted at the end of your debugging session. 
-  In order to do so, please **flush your cache directory** as described in the :ref:`previous section <part.cache>`.

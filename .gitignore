@@ -6,9 +6,11 @@
 
 # virtual env
 *venv*
+.pyenv
 
 # Build junk
 *build*
+!pybuild.sh
 *output*
 !*input_output.py
 /build/*
@@ -36,12 +38,19 @@
 *__pycache__*
 *.pyc
 
+# coverage data files
+*.coverage*
+htmlcov
+
+# pytest
+.pytest_cache
+
 # Setuptools distribution folder.
-/dist/
+*/dist/
 
 # Python egg metadata, regenerated from source files by setuptools.
-/*.egg-info
-/*.egg
+*/*.egg-info
+*/*.egg
 
 keopslab/generic/pathtocmake
 
@@ -50,3 +59,7 @@ keopslab/common/pathtocmake
 # R/Rstudio related files
 .Rproj.user
 .Rhistory
+
+# benchmark extra file
+benchmarks/*halide*
+*benchmark_datasets*

@@ -25,12 +25,11 @@ performance but worry about computation precision, you can use float 32bits
 precision and compensated sums that are implemented in KeOps.
 }
 \examples{
-\donttest{
+library(rkeops)
 compile4float64()
 }
-}
 \seealso{
-\code{\link[rkeops:compile4float32]{rkeops::compile4float32()}}
+\code{\link[=compile4float32]{compile4float32()}}
 }
 \author{
 Ghislain Durif

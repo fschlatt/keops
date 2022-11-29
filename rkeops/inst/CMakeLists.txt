@@ -24,6 +24,10 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
+if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    set( CMAKE_VERBOSE_MAKEFILE on )
+endif()
+
 ## include keops header for cuda
 include(${KEOPS_SRC_DIR}/cuda.cmake)
 
@@ -66,10 +70,9 @@ endif()
 # ----------------- create shared lib (cuda)
 if(USE_CUDA)
   
-    CUDA_add_library(
+    add_library(
         keops${shared_obj_name} SHARED
         ${KEOPS_SRC_DIR}/core/link_autodiff.cu
-        OPTIONS --pre-include=${shared_obj_name}.h
     )
 
 # ----------------- create shared lib (cpp)
@@ -79,20 +82,19 @@ else()
         keops${shared_obj_name} SHARED
         ${KEOPS_SRC_DIR}/core/link_autodiff.cpp
     )
-
-    target_compile_options(
-        keops${shared_obj_name} BEFORE
-        PRIVATE -include ${shared_obj_name}.h
-    )
-
-    # tell Cmake to explicitly add the dependency: 
-    # keops is recompiled as soon as formula.h change.
-    set_source_files_properties(
-        ${KEOPS_SRC_DIR}/core/link_autodiff.cpp PROPERTIES
-        OBJECT_DEPENDS ${shared_obj_name}.h
-    )
-
 endif()
+
+
+target_compile_options(
+    keops${shared_obj_name} BEFORE
+    PRIVATE -include ${shared_obj_name}.h
+)
+
+# tell Cmake to explicitly add the dependency: keops is recompiled as soon as formula.h change.
+set_source_files_properties(
+    ${KEOPS_SRC_DIR}/core/link_autodiff.cpp PROPERTIES
+    OBJECT_DEPENDS ${shared_obj_name}.h
+)
 
 # skip the full RPATH (~run path) for the build tree. We append $ORIGIN later
 SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
@@ -163,7 +165,7 @@ if(APPLE)
     set_target_properties(
         rkeops${shared_obj_name} 
         PROPERTIES LINK_FLAGS 
-        "-Wno-ignored-attributes -Wl,-rpath,@loader_path/."
+        "-Wno-ignored-attributes -Wl,-rpath,@loader_path/. -lR -Wl,-framework -Wl,CoreFoundation"
     )
 else()
     set_target_properties(

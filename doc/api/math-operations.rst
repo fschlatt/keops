@@ -4,7 +4,7 @@ Formulas and syntax
 ###################
 
 
-KeOps lets you define any reduction operation of the form
+KeOps lets us define any reduction operation of the form
 
 .. math::
 
@@ -17,10 +17,10 @@ or
    \beta_j = \operatorname{Reduction}_i\limits \big[ F(x^0_{\iota_0}, ... , x^{n-1}_{\iota_{n-1}})  \big]
 
 where :math:`F` is a symbolic formula, the :math:`x^k_{\iota_k}`'s are vector variables
-and 
+and
 :math:`\text{Reduction}` is a Sum, LogSumExp or any other standard operation (see :ref:`part.reduction` for the full list of supported reductions).
 
-We now describe the symbolic syntax that 
+We now describe the symbolic syntax that
 can be used through all KeOps bindings.
 
 .. _`part.varCategory`:
@@ -29,7 +29,7 @@ Variables: category, index and dimension
 ========================================
 
 
-At a low level, every variable :math:`x^k_{\iota_k}` is specified by its **category** :math:`\iota_k\in\{i,j,\emptyset\}` (meaning that the variable is indexed by :math:`i`, by :math:`j`, or is a fixed parameter across indices), its **positional index** :math:`k` and its **dimension** :math:`d_k`. 
+At a low level, every variable :math:`x^k_{\iota_k}` is specified by its **category** :math:`\iota_k\in\{i,j,\emptyset\}` (meaning that the variable is indexed by :math:`i`, by :math:`j`, or is a fixed parameter across indices), its **positional index** :math:`k` and its **dimension** :math:`d_k`.
 
 In practice, the category :math:`\iota_k` is given through a keyword
 
@@ -78,11 +78,18 @@ To define formulas with KeOps, you can use simple arithmetics:
 Elementary functions:
 
 ======================   =========================================================================================================
+``Minus(f)``              element-wise opposite of ``f``
 ``Inv(f)``                element-wise inverse ``1 ./ f``
 ``Exp(f)``                element-wise exponential function
 ``Log(f)``                element-wise natural logarithm
+``XLogX(f)``              computes ``f * log(f)`` element-wise (with value ``0`` at ``0``)
 ``Sin(f)``                element-wise sine function
+``SinXDivX(f)``           function ``sin(f)/f`` element-wise (with value ``1`` at ``0``)
+``Asin(f)``               element-wise arc-sine function
 ``Cos(f)``                element-wise cosine function
+``Acos(f)``               element-wise arc-cosine function
+``Atan(f)``               element-wise arc-tangent function
+``Atan2(f,g)``            element-wise 2-argument arc-tangent function
 ``Pow(f, P)``             ``P``-th power of ``f`` (element-wise), where ``P`` is a fixed integer
 ``Powf(f, g)``            power operation, alias for ``Exp(g*Log(f))``
 ``Square(f)``             element-wise square, faster than ``Pow(f,2)``
@@ -92,6 +99,11 @@ Elementary functions:
 ``Sign(f)``               element-wise sign function (``-1`` if ``f<0``, ``0`` if ``f=0``, ``1`` if ``f>0``)
 ``Step(f)``               element-wise step function (``0`` if ``f<0``, ``1`` if ``f>=0``)
 ``ReLU(f)``               element-wise ReLU function (``0`` if ``f<0``, ``f`` if ``f>=0``)
+``Clamp(f,a,b)``          element-wise Clamp function (``a`` if ``f<a``, ``f`` if ``a<=f<=b``, ``b`` if ``b<f``)
+``ClampInt(f,a,b)``       element-wise Clamp function, with a and b fixed integers
+``IfElse(f,g,h)``         element-wise IfElse function (``g`` if ``f>=0``, ``h`` if ``f<0``)
+``Mod(f,m,off)``          element-wise Modulo function, with offset (computes ``f - m * floor((f - off)/m)``)
+``Round(f,d)``            element-wise Round function, with d decimal rounding
 ======================   =========================================================================================================
 
 
@@ -101,7 +113,7 @@ Simple vector operations:
 ``SqNorm2(f)``               squared L2 norm, same as ``(f|f)``
 ``Norm2(f)``                 L2 norm, same as ``Sqrt((f|f))``
 ``Normalize(f)``             normalize vector, same as ``Rsqrt(SqNorm2(f)) * f``
-``SqDist(f, g)``              squared L2 distance, same as ``SqNorm2(f - g)``
+``SqDist(f, g)``             squared L2 distance, same as ``SqNorm2(f - g)``
 =========================   =============================================================================================================
 
 Generic squared Euclidean norms, with support for scalar, diagonal and full (symmetric)
@@ -117,6 +129,25 @@ matrices. If ``f`` is a vector of size `N`, depending on the size of
 ``WeightedSqDist(s, f, g)``      generic squared distance, same as ``WeightedSqNorm(s, f-g)``
 ============================   =============================================================================================================
 
+Operations involving complex numbers:
+
+==========================  =========================================================================================================
+``ComplexReal(f)``                  Real part of complex (vectorized)
+``ComplexImag(f)``                  Imaginary part of complex (vectorized)
+``Real2Complex(f)``                 convert real vector to complex vector with zero imaginary part (F+0*i)
+``Imag2Complex(f)``                 convert real vector to complex vector with zero real part (0+i*F)
+``Conj(f)``                         Complex conjugate (vectorized)
+``ComplexAbs(f)``                   Absolute value or modulus of complex (vectorized)
+``ComplexSquareAbs(f)``             Square of modulus of complex (vectorized)
+``ComplexAngle(f)``                 Angle of complex (vectorized)
+``ComplexSum(f)``                   Sum of complex vector
+``ComplexSumT(f,dim)``              Adjoint operation of ComplexSum - replicates f (complex scalar) dim times
+``ComplexMult(f,g)``                Complex multiplication of f and g (vectorized)
+``ComplexScal(f,g)``                Multiplication of f (complex scalar) with g (complex vector)
+``ComplexRealScal(f,g)``            Multiplication of f (real scalar) with g (complex vector)
+``ComplexDivide(f,g)``              Complex division of f and g (vectorized)
+==========================  =========================================================================================================
+
 Constants and padding/concatenation operations:
 
 ======================   =========================================================================================================
@@ -124,6 +155,10 @@ Constants and padding/concatenation operations:
 ``IntInv(N)``             alias for ``Inv(IntCst(N))`` : 1/N
 ``Zero(N)``               vector of zeros of size N
 ``Sum(f)``                sum of elements of vector ``f``
+``Max(f)``                max of elements of vector ``f``
+``Min(f)``                min of elements of vector ``f``
+``ArgMax(f)``             argmax of elements of vector ``f``
+``ArgMin(f)``             argmin of elements of vector ``f``
 ``Elem(f, M)``            extract M-th element of vector ``f``
 ``ElemT(f, N, M)``        insert scalar value ``f`` at position M in a vector of zeros of length N
 ``Extract(f, M, D)``      extract sub-vector from vector ``f`` (M is starting index, D is dimension of sub-vector)
@@ -138,7 +173,7 @@ Elementary dot products:
 ``MatVecMult(f, g)``                                matrix-vector product ``f x g``: ``f`` is vector interpreted as matrix (column-major), ``g`` is vector
 ``VecMatMult(f, g)``                                vector-matrix product ``f x g``: ``f`` is vector, ``g`` is vector interpreted as matrix (column-major)
 ``TensorProd(f, g)``                                tensor cross product ``f x g^T``: ``f`` and ``g`` are vectors of sizes M and N, output is of size MN.
-``TensorDot(f, g, dimf, dimg, contf, contg)``       tensordot product ``f : g``(similar to `numpy's tensordot <https://docs.scipy.org/doc/numpy/reference/generated/numpy.tensordot.html>`_ in the spirit): ``f`` and ``g`` are tensors of sizes listed in ``dimf`` and ``dimg`` :ref:`index sequences <part.reservedWord>` and contracted along the dimensions listed in ``contf`` and ``contg`` :ref:`index sequences <part.reservedWord>`. The ``MatVecMult``, ``VecMatMult`` and ``TensorProd`` operations are special cases of ``TensorDot``.
+``TensorDot(f, g, dimf, dimg, contf, contg)``       tensordot product ``f : g``(similar to `numpy\'s tensordot <https://docs.scipy.org/doc/numpy/reference/generated/numpy.tensordot.html>`_ in the spirit): ``f`` and ``g`` are tensors of sizes listed in ``dimf`` and ``dimg`` :ref:`index sequences <part.reservedWord>` and contracted along the dimensions listed in ``contf`` and ``contg`` :ref:`index sequences <part.reservedWord>`. The ``MatVecMult``, ``VecMatMult`` and ``TensorProd`` operations are special cases of ``TensorDot``.
 ==============================================     ====================================================================================================================================================================================================================================================================================
 
 Symbolic gradients:
@@ -160,7 +195,7 @@ The operations that can be used to reduce an array are described in the followin
 code name                    arguments              mathematical expression                                                                                                       remarks
                                                     (reduction over j)
 =========================    =====================  ============================================================================================================================  =========================================================================
-``Sum``                      ``f``                  :math:`\sum_j f_{ij}`                                                                                        
+``Sum``                      ``f``                  :math:`\sum_j f_{ij}`
 ``Max_SumShiftExp``          ``f`` (scalar)         :math:`(m_i,s_i)` with :math:`\left\{\begin{array}{l}m_i=\max_j f_{ij}\\s_i=\sum_j\exp(f_{ij}-m_i)\end{array}\right.`         - core KeOps reduction for ``LogSumExp``.
                                                                                                                                                                                   - gradient is a pseudo-gradient, should not be used by itself
 ``LogSumExp``                ``f`` (scalar)         :math:`\log\left(\sum_j\exp(f_{ij})\right)`                                                                                   only in Python bindings
@@ -175,7 +210,7 @@ code name                    arguments              mathematical expression     
 ``ArgMax``                   ``f``                  :math:`\text{argmax}_j f_{ij}`                                                                                                gradient returns zeros
 ``Max_ArgMax``               ``f``                  :math:`\left(\max_j f_{ij},\text{argmax}_j f_{ij}\right)`                                                                     no gradient
 ``KMin``                     ``f``, ``K`` (int)     :math:`\begin{array}{l}\left[\min_j f_{ij},\ldots,\min^{(K)}_jf_{ij}\right]                                                   no gradient
-                                                    \\(\min^{(k)}\text{means k-th smallest value})\end{array}`                                                                     
+                                                    \\(\min^{(k)}\text{means k-th smallest value})\end{array}`
 ``ArgKMin``                  ``f``, ``K`` (int)     :math:`\left[\text{argmin}_jf_{ij},\ldots,\text{argmin}^{(K)}_j f_{ij}\right]`                                                gradient returns zeros
 ``KMin_ArgKMin``             ``f``, ``K`` (int)     :math:`\left([\min^{(1...K)}_j f_{ij} ],[\text{argmin}^{(1...K)}_j f_{ij}]\right)`                                            no gradient
 =========================    =====================  ============================================================================================================================  =========================================================================

@@ -39,6 +39,8 @@ install.packages(c("Rcpp", "RcppEigen", "openssl", "stringr",
 
 ## Continuous Integration (CI)
 
+See the [dedicated file](./ci/README.md) for more details.
+
 Check this [script](./ci/run_ci.sh).
 
 To enable automatic tests to be run on GPU, the environment variable `TEST_GPU` 
@@ -49,6 +51,8 @@ export TEST_GPU=1
 
 To generate html files from the vignettes that can be integrated into the 
 Sphinx doc, see this [script](./ci/html2doc.sh).
+
+> Note: on MacOS, you need to install pdflatex to run check, e.g. with `brew cask install basictex`.
 
 
 ## Rstudio

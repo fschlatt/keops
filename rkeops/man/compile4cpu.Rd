@@ -21,12 +21,11 @@ you do not modify \code{rkeops} options, you have to call the function
 CPU-compatible operators cannot run on GPU.
 }
 \examples{
-\donttest{
+library(rkeops)
 compile4cpu()
 }
-}
 \seealso{
-\code{\link[rkeops:compile4gpu]{rkeops::compile4gpu()}}, \code{\link[rkeops:use_cpu]{rkeops::use_cpu()}}
+\code{\link[=compile4gpu]{compile4gpu()}}, \code{\link[=use_cpu]{use_cpu()}}
 }
 \author{
 Ghislain Durif

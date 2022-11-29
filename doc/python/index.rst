@@ -7,15 +7,13 @@
 Python bindings for KeOps
 #########################
 
-We now fully document the public interface of the :mod:`pykeops` module, which is a NumPy or PyTorch front-end for the KeOps C++/Cuda library. This package contains four sets of instructions:
+We now fully document the public interface of the :mod:`pykeops` module, which is a NumPy and PyTorch front-end for the KeOps C++/CUDA library. This package contains three sets of instructions:
 
 1. :doc:`The LazyTensor wrapper <LazyTensor>`: our **high-level** interface, which provides a pythonic support for the most useful features of KeOps.
 
-2. :doc:`The Genred module <Genred>`: our **low-level** syntax, compatible with NumPy and PyTorch.
+2. :doc:`The Genred module <Genred>`: our **low-level** syntax, which interacts directly with the KeOps++ engine.
 
-3. :doc:`The generic_reduction functions <generic-reduction>`: a **math-friendly** set of helper routines for the Genred module.
-
-4. :doc:`kernel_product <kernel-product>`: a specific syntax with **convenient aliases** for operations in kernel spaces. This module is only compatible with PyTorch.
+3. :doc:`The generic_reduction functions <generic-reduction>`: a **legacy** collection of helper routines for the Genred module.
 
 
 .. toctree::
@@ -26,7 +24,6 @@ We now fully document the public interface of the :mod:`pykeops` module, which i
    Genred
    generic-solver
    generic-reduction
-   kernel-product
    sparsity
 
 
